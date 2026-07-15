@@ -1,0 +1,55 @@
+name: linux
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  client:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install Tauri system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential libxdo-dev \
+            libssl-dev libayatana-appindicator3-dev librsvg2-dev libdbus-1-dev
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: client/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: client/src-tauri
+      - run: npm ci
+      - name: Fetch sing-box (embedded into the binary)
+        env:
+          SINGBOX_VERSION: "1.10.7" # keep in step with windows.yml
+        run: |
+          mkdir -p src-tauri/bin
+          curl -fsSL "https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}/sing-box-${SINGBOX_VERSION}-linux-amd64.tar.gz" | tar xz
+          cp "sing-box-${SINGBOX_VERSION}-linux-amd64/sing-box" src-tauri/bin/sing-box
+      - run: cargo test --manifest-path src-tauri/Cargo.toml
+      # tauri.linux.conf.json switches the bundler on and produces a .deb
+      # that depends on wireguard-tools.
+      - run: npm run tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: chatte-vpn-linux
+          path: client/src-tauri/target/release/bundle/deb/*.deb
+          if-no-files-found: error
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: client/src-tauri/target/release/bundle/deb/*.deb

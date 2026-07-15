@@ -1,4 +1,4 @@
-name: build
+name: server
 
 on:
   push:
@@ -20,44 +20,3 @@ jobs:
       - run: go vet ./...
       - run: go test ./...
       - run: CGO_ENABLED=0 go build -o api .
-
-  client:
-    runs-on: windows-latest
-    defaults:
-      run:
-        working-directory: client
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-          cache-dependency-path: client/package-lock.json
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: client/src-tauri
-      - run: npm ci
-      - name: Fetch sing-box + wintun (embedded into the single exe)
-        shell: pwsh
-        env:
-          SINGBOX_VERSION: "1.10.7" # bump as needed; ≥1.10 for the `address` tun schema
-          WINTUN_VERSION: "0.14.1"
-        run: |
-          $ErrorActionPreference = "Stop"
-          New-Item -ItemType Directory -Force src-tauri/bin | Out-Null
-          Invoke-WebRequest "https://github.com/SagerNet/sing-box/releases/download/v$env:SINGBOX_VERSION/sing-box-$env:SINGBOX_VERSION-windows-amd64.zip" -OutFile sb.zip
-          Expand-Archive sb.zip -DestinationPath sb -Force
-          Copy-Item (Get-ChildItem -Recurse sb -Filter sing-box.exe).FullName src-tauri/bin/sing-box.exe
-          Invoke-WebRequest "https://www.wintun.net/builds/wintun-$env:WINTUN_VERSION.zip" -OutFile wintun.zip
-          Expand-Archive wintun.zip -DestinationPath wt -Force
-          Copy-Item wt/wintun/bin/amd64/wintun.dll src-tauri/bin/wintun.dll
-      - run: cargo test --manifest-path src-tauri/Cargo.toml
-      # ponytail: no bundler/icons yet — ships the self-contained exe;
-      # switch bundle.active on and add icons when branding exists.
-      - run: npm run tauri build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: chatte-vpn-windows
-          path: client/src-tauri/target/release/chatte-vpn.exe
-          if-no-files-found: error
