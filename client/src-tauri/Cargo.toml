@@ -1,0 +1,19 @@
+[package]
+name = "chatte-vpn"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "chatte_vpn_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+keyring = { version = "3", features = ["windows-native"] }
+thiserror = "2"

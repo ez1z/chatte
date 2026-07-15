@@ -1,0 +1,7 @@
+node_modules/
+dist/
+target/
+server/api.exe
+server/api
+.env
+*.log
