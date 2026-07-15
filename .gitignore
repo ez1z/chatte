@@ -1,6 +1,7 @@
 node_modules/
 dist/
 target/
+client/src-tauri/bin/
 server/api.exe
 server/api
 .env
